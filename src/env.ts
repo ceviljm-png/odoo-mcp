@@ -51,6 +51,10 @@ export const env = {
   CONFIRM_SECRET: optional("CONFIRM_SECRET"),
   /** Fecha de caducidad de la API key de Odoo (YYYY-MM-DD) para avisar en odoo_whoami. */
   ODOO_API_KEY_EXPIRES: optional("ODOO_API_KEY_EXPIRES"),
+  /** Contraseña de la página de acceso OAuth (conectores de Claude). Vacía = OAuth desactivado. */
+  OAUTH_PASSWORD: optional("OAUTH_PASSWORD"),
+  /** URL pública del servidor, sin barra final. Por defecto https://<primer host de ALLOWED_HOSTS>. */
+  PUBLIC_URL: optional("PUBLIC_URL").replace(/\/+$/, ""),
   ODOO_TIMEOUT_MS: Number(optional("ODOO_TIMEOUT_MS", "20000")),
   /** Contexto que se envía en todas las llamadas a Odoo. */
   ODOO_CONTEXT: { lang: "es_ES", tz: "Europe/Madrid" } as Record<string, unknown>,
@@ -58,4 +62,12 @@ export const env = {
 
 if (env.MCP_BEARER_TOKEN.length < 24) {
   throw new Error("MCP_BEARER_TOKEN es demasiado corto; genera uno con: openssl rand -hex 32");
+}
+
+if (env.OAUTH_PASSWORD && env.OAUTH_PASSWORD.length < 10) {
+  throw new Error("OAUTH_PASSWORD debe tener al menos 10 caracteres.");
+}
+if (!env.PUBLIC_URL) {
+  const pub = env.ALLOWED_HOSTS.find((h) => h !== "localhost" && h !== "127.0.0.1");
+  env.PUBLIC_URL = pub ? `https://${pub}` : `http://localhost:${env.PORT}`;
 }

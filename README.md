@@ -80,6 +80,12 @@ Para conectarlo a Claude Code en local: `claude mcp add --transport http odoo ht
 
 ## Conectar en Claude
 
+**Claude (web, escritorio, móvil):** Ajustes → Conectores → *Añadir conector personalizado* → URL `https://<dominio>/mcp`, sin rellenar nada más. Claude abrirá la página de acceso del servidor: introduce la contraseña de `OAUTH_PASSWORD`. El servidor solo acepta volver a claude.ai / claude.com / localhost, limita los intentos fallidos (5 por IP cada 15 min) y emite tokens firmados de 8 h que se renuevan solos durante 90 días. Cambiar `OAUTH_PASSWORD` o `MCP_BEARER_TOKEN` desconecta a todos.
+
+**Claude Code o scripts:** siguen pudiendo usar el token fijo en la cabecera `Authorization: Bearer <MCP_BEARER_TOKEN>`.
+
+### (antes) Conectar con cabecera fija
+
 Ajustes → Conectores → *Añadir conector personalizado* → URL `https://<dominio>/mcp`. En la opción de cabeceras añade `Authorization` con valor `Bearer <MCP_BEARER_TOKEN>`. Primera prueba: "¿qué usuario eres en Odoo?".
 
 ## Estructura
@@ -95,6 +101,7 @@ src/tz.ts           días de Madrid ↔ datetime UTC de Odoo
 src/confirm.ts      tokens de confirmación (HMAC, 5 min, un solo uso)
 src/audit.ts        auditoría JSONL + nota en el chatter
 src/writes.ts       plantilla previsualizar → confirmar
+src/oauth.ts        OAuth 2.1 (registro dinámico + PKCE) para los conectores de Claude
 src/odoo/aggregate.ts  formatted_read_group con respaldo read_group
 src/tools/base.ts      herramientas base
 src/tools/pos.ts       TPV y comparativas

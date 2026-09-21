@@ -4,12 +4,13 @@
  *   POST /mcp      ← Claude (Authorization: Bearer MCP_BEARER_TOKEN)
  *   GET  /healthz  ← Easypanel / monitorización
  */
-import { createMcpExpressApp, requireBearerAuth, type OAuthTokenVerifier } from "@modelcontextprotocol/express";
+import { createMcpExpressApp, getOAuthProtectedResourceMetadataUrl, requireBearerAuth, type OAuthTokenVerifier } from "@modelcontextprotocol/express";
 import { toNodeHandler } from "@modelcontextprotocol/node";
 import { createMcpHandler, McpServer, OAuthError, OAuthErrorCode, type AuthInfo, type McpServerFactory } from "@modelcontextprotocol/server";
 import type express from "express";
 import { timingSafeEqual } from "node:crypto";
 import { env } from "./env.js";
+import { SCOPE, oauthRouter, verifyAccessToken } from "./oauth.js";
 import { registerBaseTools } from "./tools/base.js";
 import { registerInvoicingTools } from "./tools/invoicing.js";
 import { registerPosTools } from "./tools/pos.js";
@@ -52,9 +53,12 @@ function tokenMatches(token: string): boolean {
 
 const verifier: OAuthTokenVerifier = {
   async verifyAccessToken(token): Promise<AuthInfo> {
-    if (!tokenMatches(token)) throw new OAuthError(OAuthErrorCode.InvalidToken, "token no válido");
-    // El token es estático; el SDK exige expiresAt (segundos), así que se da por válido una hora desde ahora.
-    return { token, clientId: "claude", scopes: ["odoo"], expiresAt: Math.floor(Date.now() / 1000) + 3600 };
+    // 1) Token fijo (Claude Code, scripts). Es estático; el SDK exige expiresAt, así que vale una hora desde ahora.
+    if (tokenMatches(token)) return { token, clientId: "static", scopes: [SCOPE], expiresAt: Math.floor(Date.now() / 1000) + 3600 };
+    // 2) Access token emitido por el login OAuth (conectores de Claude).
+    const at = verifyAccessToken(token);
+    if (at) return { token, clientId: at.clientId, scopes: [SCOPE], expiresAt: at.exp };
+    throw new OAuthError(OAuthErrorCode.InvalidToken, "token no válido o caducado");
   },
 };
 
@@ -74,7 +78,13 @@ function rateLimited(): boolean {
 
 // ---------- Express ----------
 const app = createMcpExpressApp({ host: "0.0.0.0", allowedHosts: env.ALLOWED_HOSTS, jsonLimit: "1mb" });
-const auth = requireBearerAuth({ verifier, requiredScopes: ["odoo"] });
+const auth = requireBearerAuth({
+  verifier,
+  requiredScopes: [SCOPE],
+  resourceMetadataUrl: getOAuthProtectedResourceMetadataUrl(new URL(`${env.PUBLIC_URL}/mcp`)),
+});
+app.set("trust proxy", true);
+app.use(oauthRouter(env.PUBLIC_URL));
 const node = toNodeHandler(handler);
 
 app.get("/healthz", (_req, res) => {
@@ -90,7 +100,7 @@ const normalizeAuth: express.RequestHandler = (req, _res, next) => {
   const raw = req.headers.authorization ?? req.header("x-api-key") ?? req.header("api-key") ?? "";
   const token = String(raw).trim().replace(/^(bearer\s+)+/i, "").trim();
   if (token) req.headers.authorization = `Bearer ${token}`;
-  if (!tokenMatches(token)) {
+  if (!tokenMatches(token) && !verifyAccessToken(token)) {
     const where = req.headers.authorization ? "Authorization" : req.header("x-api-key") ? "X-API-Key" : req.header("api-key") ? "Api-Key" : "ninguna";
     console.error(
       `[auth] rechazado ${req.method} ${req.path} · cabecera: ${where} · token ${token ? `de ${token.length} caracteres (se esperan ${env.MCP_BEARER_TOKEN.length})` : "vacío"} · cliente: ${req.header("user-agent") ?? "?"}`,
@@ -108,7 +118,7 @@ app.all("/mcp", normalizeAuth, auth, (req, res) => {
 });
 
 const httpServer = app.listen(env.PORT, "0.0.0.0", () => {
-  console.error(`[odoo-mcp] escuchando en http://0.0.0.0:${env.PORT}/mcp · Odoo ${env.ODOO_URL} (${env.ODOO_API_FLAVOR}) · hosts ${env.ALLOWED_HOSTS.join(", ")}`);
+  console.error(`[odoo-mcp] escuchando en http://0.0.0.0:${env.PORT}/mcp · Odoo ${env.ODOO_URL} (${env.ODOO_API_FLAVOR}) · hosts ${env.ALLOWED_HOSTS.join(", ")} · OAuth ${env.OAUTH_PASSWORD ? `activo en ${env.PUBLIC_URL}` : "desactivado (falta OAUTH_PASSWORD)"}`);
 });
 
 for (const sig of ["SIGINT", "SIGTERM"] as const) {
