@@ -7,6 +7,7 @@
 import { createMcpExpressApp, requireBearerAuth, type OAuthTokenVerifier } from "@modelcontextprotocol/express";
 import { toNodeHandler } from "@modelcontextprotocol/node";
 import { createMcpHandler, McpServer, OAuthError, OAuthErrorCode, type AuthInfo, type McpServerFactory } from "@modelcontextprotocol/server";
+import type express from "express";
 import { timingSafeEqual } from "node:crypto";
 import { env } from "./env.js";
 import { registerBaseTools } from "./tools/base.js";
@@ -80,7 +81,25 @@ app.get("/healthz", (_req, res) => {
   res.json({ ok: true, name: SERVER_NAME, version: SERVER_VERSION, odoo: env.ODOO_URL, db: env.ODOO_DB });
 });
 
-app.all("/mcp", auth, (req, res) => {
+/**
+ * Normaliza cómo llega el token: acepta "Bearer <t>", "Bearer Bearer <t>" (cuando el cliente
+ * añade el prefijo y el valor ya lo traía), el token pelado, o las cabeceras X-API-Key / Api-Key.
+ * Registra el motivo de cada rechazo sin mostrar el token.
+ */
+const normalizeAuth: express.RequestHandler = (req, _res, next) => {
+  const raw = req.headers.authorization ?? req.header("x-api-key") ?? req.header("api-key") ?? "";
+  const token = String(raw).trim().replace(/^(bearer\s+)+/i, "").trim();
+  if (token) req.headers.authorization = `Bearer ${token}`;
+  if (!tokenMatches(token)) {
+    const where = req.headers.authorization ? "Authorization" : req.header("x-api-key") ? "X-API-Key" : req.header("api-key") ? "Api-Key" : "ninguna";
+    console.error(
+      `[auth] rechazado ${req.method} ${req.path} · cabecera: ${where} · token ${token ? `de ${token.length} caracteres (se esperan ${env.MCP_BEARER_TOKEN.length})` : "vacío"} · cliente: ${req.header("user-agent") ?? "?"}`,
+    );
+  }
+  next();
+};
+
+app.all("/mcp", normalizeAuth, auth, (req, res) => {
   if (rateLimited()) {
     res.status(429).json({ error: "Demasiadas peticiones; espera un minuto." });
     return;
