@@ -25,10 +25,18 @@ export const env = {
   ODOO_LOGIN: optional("ODOO_LOGIN"),
   MCP_BEARER_TOKEN: required("MCP_BEARER_TOKEN"),
   PORT: Number(optional("PORT", "3000")),
-  ALLOWED_HOSTS: optional("ALLOWED_HOSTS", "localhost,127.0.0.1")
-    .split(",")
-    .map((h) => h.trim())
-    .filter(Boolean),
+  // localhost/127.0.0.1 siempre: los usa el chequeo de salud desde dentro del contenedor.
+  // Se aceptan también URLs completas ("https://dominio/") por si se pegan así.
+  ALLOWED_HOSTS: [
+    ...new Set([
+      "localhost",
+      "127.0.0.1",
+      ...optional("ALLOWED_HOSTS")
+        .split(",")
+        .map((h) => h.trim().replace(/^https?:\/\//, "").replace(/\/.*$/, ""))
+        .filter(Boolean),
+    ]),
+  ],
   WINE_CATEGORY_ID: optional("WINE_CATEGORY_ID") ? Number(optional("WINE_CATEGORY_ID")) : undefined,
   /** Categorías del TPV (pos.category) que cuentan como vino, separadas por coma. Se incluyen sus subcategorías. */
   WINE_POS_CATEGORY_IDS: optional("WINE_POS_CATEGORY_IDS")
