@@ -144,11 +144,21 @@ ${opts.error ? `<div class="err">${esc(opts.error)}</div>` : ""}
 </main></body></html>`;
 }
 
-function htmlHeaders(res: express.Response) {
+/**
+ * Cabeceras de la página de acceso. form-action tiene que incluir el origen de la redirect_uri:
+ * Chrome aplica form-action también a la redirección 302 que sigue al POST, y sin él la bloquea.
+ */
+function htmlHeaders(res: express.Response, redirectUri?: string) {
+  let target = "";
+  try {
+    if (redirectUri && redirectAllowed(redirectUri)) target = " " + new URL(redirectUri).origin;
+  } catch {
+    /* sin destino válido: solo 'self' */
+  }
   res.set({
     "Content-Type": "text/html; charset=utf-8",
     "X-Frame-Options": "DENY",
-    "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'",
+    "Content-Security-Policy": `default-src 'none'; style-src 'unsafe-inline'; form-action 'self'${target}; frame-ancestors 'none'`,
     "Referrer-Policy": "no-referrer",
     "Cache-Control": "no-store",
   });
@@ -236,7 +246,7 @@ export function oauthRouter(publicUrl: string): express.Router {
   r.get("/authorize", (req, res) => {
     const q = req.query as Record<string, unknown>;
     const chk = checkAuthorize(q);
-    htmlHeaders(res);
+    htmlHeaders(res, "error" in chk ? undefined : chk.redirect);
     if ("error" in chk) return void res.status(400).send(page({ clientName: "Un cliente", hidden: {}, disabled: chk.error }));
     if (!env.OAUTH_PASSWORD) return void res.status(503).send(page({ clientName: chk.client.n, hidden: {}, disabled: "El acceso por OAuth no está activado (falta OAUTH_PASSWORD en el servidor)." }));
     res.send(page({ clientName: chk.client.n, hidden: hiddenFrom(q) }));
@@ -245,7 +255,7 @@ export function oauthRouter(publicUrl: string): express.Router {
   r.post("/authorize", express.urlencoded({ extended: false, limit: "16kb" }), (req, res) => {
     const q = (req.body ?? {}) as Record<string, unknown>;
     const chk = checkAuthorize(q);
-    htmlHeaders(res);
+    htmlHeaders(res, "error" in chk ? undefined : chk.redirect);
     if ("error" in chk) return void res.status(400).send(page({ clientName: "Un cliente", hidden: {}, disabled: chk.error }));
     const ip = String(req.headers["x-forwarded-for"] ?? req.socket.remoteAddress ?? "?").split(",")[0]!.trim();
     if (tooManyFails(ip)) {
