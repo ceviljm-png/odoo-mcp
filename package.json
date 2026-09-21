@@ -1,0 +1,32 @@
+{
+  "name": "odoo-mcp",
+  "version": "0.1.0",
+  "description": "Servidor MCP que conecta Claude con el Odoo 19 de Restaurante Juan Moreno",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "tsx watch --env-file=.env src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/express": "^2.0.0",
+    "@modelcontextprotocol/node": "^2.0.0",
+    "@modelcontextprotocol/server": "^2.0.0",
+    "express": "^5.1.0",
+    "zod": "^4.2.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^22.0.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true
+  }
+}

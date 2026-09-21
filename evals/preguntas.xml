@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Fase 4 · Evaluación. Diez preguntas reales, solo lectura, con la herramienta
+  que Claude debería elegir. La respuesta esperada se rellena comprobándola a
+  mano en Odoo; si Claude elige otra herramienta o se equivoca, se ajusta la
+  descripción de la herramienta y se repite.
+-->
+<evaluation>
+  <qa_pair>
+    <question>¿Cuánto vendimos en el TPV el sábado pasado y con qué ticket medio? Desglosa efectivo y tarjeta.</question>
+    <expected_tool>odoo_pos_daily_summary</expected_tool>
+    <answer>Sábado 19/09/2026: 2.310,00 € · 14 tickets · ticket medio 165,00 € · tarjeta 1.595,30 € (9 pagos) · efectivo 714,70 € (10 pagos)</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>¿Qué vinos tienen 2 botellas o menos ahora mismo?</question>
+    <expected_tool>odoo_stock_low (only_wines=true)</expected_tool>
+    <answer>Ninguno: los vinos no tienen control de stock activado en Odoo (is_storable=false). La respuesta correcta es decirlo, no "0 vinos".</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>¿Cuáles han sido los 5 vinos más vendidos este mes, por botellas?</question>
+    <expected_tool>odoo_pos_top_products (only_wines=true, by=qty)</expected_tool>
+    <answer>Sept. 2026 (1–21) por unidades: copa blanco 59, copa tinto 58, "VINO" (precio abierto) 16, copa Jerez/Montilla 7, copa espumoso 6</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>¿Cómo va esta semana comparada con la anterior en el restaurante?</question>
+    <expected_tool>odoo_sales_compare (preset=week)</expected_tool>
+    <answer>15–21/09 vs 08–14/09: 7.452,56 € vs 7.040,59 € (+5,9 %) · 57 vs 51 tickets · ticket medio 130,75 € (−5,3 %)</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>¿Hay alguna caja sin cerrar o alguna sesión con descuadre de efectivo esta semana?</question>
+    <expected_tool>odoo_pos_sessions</expected_tool>
+    <answer>Tpv/00046 abierta desde el 18/09 09:26 (más de 24 h); la diferencia de efectivo solo se conoce al cerrar</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>¿Qué facturas de clientes están pendientes de cobro y cuánto suman?</question>
+    <expected_tool>odoo_invoice_search (only_pending=true)</expected_tool>
+    <answer>4 facturas · 5.933,00 € (San Telmo 2.600 €, RTV Indalo 2.500 €, Codeur 458 €, Comercial Vera 375 €) a 21/09/2026</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>¿Cuántos bonos regalo se han vendido por la web en los últimos 30 días y por cuánto?</question>
+    <expected_tool>odoo_web_orders (product="bono")</expected_tool>
+    <answer>0 en los últimos 30 días (a 21/09/2026). Histórico web: BONO REGALO 150 € ×2 y 100 € ×1.</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>Del mes pasado, ¿cuánto se vendió a clientes con CIF y cuánto de contado?</question>
+    <expected_tool>odoo_sales_ledger_monthly</expected_tool>
+    <answer>Agosto 2026: 612 operaciones · contado 83.865,94 € · con CIF 5.480,55 € · IVA 8.122,10 € · total 89.346,49 € (pendiente de cuadrar con ContaSol)</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>¿Dónde se han ido las botellas de [un vino concreto] en las dos últimas semanas?</question>
+    <expected_tool>odoo_product_search → odoo_stock_moves</expected_tool>
+    <answer>COPA DE VINO TINTO, 08–21/09/2026: 42 unidades vendidas en ticket, sin entradas ni ajustes</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>Búscame al cliente con CIF [B…] y dime qué facturas tiene este año.</question>
+    <expected_tool>odoo_partner_search → odoo_invoice_search</expected_tool>
+    <answer>Comercial Vera Ceramica y Baños: 2 facturas en 2026 por 3.015 €, 375 € pendientes (INV/2026/00155)</answer>
+  </qa_pair>
+</evaluation>
