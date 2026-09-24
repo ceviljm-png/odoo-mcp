@@ -14,6 +14,7 @@ import { SCOPE, oauthRouter, verifyAccessToken } from "./oauth.js";
 import { registerBaseTools } from "./tools/base.js";
 import { registerInvoicingTools } from "./tools/invoicing.js";
 import { registerPosTools } from "./tools/pos.js";
+import { registerReservasTools } from "./tools/reservas.js";
 import { registerStockTools } from "./tools/stock.js";
 import { registerWebTools } from "./tools/web.js";
 
@@ -37,6 +38,7 @@ const buildServer: McpServerFactory = () => {
   registerStockTools(server);
   registerInvoicingTools(server);
   registerWebTools(server);
+  registerReservasTools(server);
   return server;
 };
 

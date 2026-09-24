@@ -56,6 +56,9 @@ export const env = {
   /** URL pública del servidor, sin barra final. Por defecto https://<primer host de ALLOWED_HOSTS>. */
   PUBLIC_URL: optional("PUBLIC_URL").replace(/\/+$/, ""),
   ODOO_TIMEOUT_MS: Number(optional("ODOO_TIMEOUT_MS", "20000")),
+  /** Sistema de reservas del restaurante (consultas de solo lectura para las herramientas reservas_*). */
+  RESERVAS_URL: optional("RESERVAS_URL").replace(/\/+$/, ""),
+  RESERVAS_API_TOKEN: optional("RESERVAS_API_TOKEN"),
   /** Contexto que se envía en todas las llamadas a Odoo. */
   ODOO_CONTEXT: { lang: "es_ES", tz: "Europe/Madrid" } as Record<string, unknown>,
 };

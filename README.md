@@ -115,3 +115,11 @@ evals/preguntas.xml    10 preguntas de evaluación (fase 4)
 
 - La API key de Odoo caduca como máximo a los 3 meses: genera otra, cámbiala en Easypanel (con su nueva `ODOO_API_KEY_EXPIRES`) y redespliega. `odoo_whoami` avisa cuando quedan 15 días o menos.
 - Rota `MCP_BEARER_TOKEN` a la vez y actualiza la cabecera en el conector de Claude.
+
+## Reservas del restaurante
+
+Cinco herramientas de solo lectura (`reservas_dia`, `reservas_disponibilidad`, `reservas_cliente`,
+`reservas_alergias`, `reservas_estadisticas`) consultan el sistema de reservas propio
+(repo `reservas-jm`) a través de su API `/api/claude`. Necesitan `RESERVAS_URL` (p. ej.
+`https://odoo-mcp-reservas.ifzwjn.easypanel.host`) y `RESERVAS_API_TOKEN`, el mismo valor que
+tenga el servicio de reservas.
