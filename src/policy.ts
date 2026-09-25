@@ -32,7 +32,8 @@ export const POLICY: Record<string, ModelPolicy> = {
   "product.template": {
     label: "Plantillas de producto (lo que se edita)",
     defaultFields: ["id", "name", "default_code", "categ_id", "list_price", "standard_price", "qty_available", "type", "is_storable", "sale_ok", "is_published", "website_published", "active"],
-    writable: ["name", "list_price", "description_sale", "is_published", "sale_ok", "default_code"],
+    // active/available_in_pos: archivar; el resto, solo para crear productos copiando la configuración de uno existente.
+    writable: ["name", "list_price", "description_sale", "is_published", "sale_ok", "default_code", "active", "available_in_pos", "pos_categ_ids", "taxes_id", "categ_id", "type", "is_storable"],
     actions: ["message_post"],
   },
   "product.category": {
@@ -88,6 +89,7 @@ export const POLICY: Record<string, ModelPolicy> = {
   "pos.category": {
     label: "Categorías del TPV",
     defaultFields: ["id", "name", "parent_id"],
+    writable: ["name", "parent_id", "sequence"],
   },
   "pos.payment.method": {
     label: "Métodos de pago del TPV",

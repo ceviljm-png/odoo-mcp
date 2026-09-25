@@ -12,6 +12,7 @@ import { timingSafeEqual } from "node:crypto";
 import { env } from "./env.js";
 import { SCOPE, oauthRouter, verifyAccessToken } from "./oauth.js";
 import { registerBaseTools } from "./tools/base.js";
+import { registerCatalogTools } from "./tools/catalog.js";
 import { registerInvoicingTools } from "./tools/invoicing.js";
 import { registerPosTools } from "./tools/pos.js";
 import { registerReservasTools } from "./tools/reservas.js";
@@ -36,6 +37,7 @@ const buildServer: McpServerFactory = () => {
   registerBaseTools(server);
   registerPosTools(server);
   registerStockTools(server);
+  registerCatalogTools(server);
   registerInvoicingTools(server);
   registerWebTools(server);
   registerReservasTools(server);
