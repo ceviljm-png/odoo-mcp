@@ -39,7 +39,7 @@ async function templateFor(input: { product_id?: number; template_id?: number })
     tmplId = (p.product_tmpl_id as [number, string])[0];
   }
   if (!tmplId) throw new OdooError("Indica product_id (variante) o template_id (plantilla). Búscalo con odoo_product_search.");
-  const [t] = await searchRead<Row>("product.template", [["id", "=", tmplId]], ["name", "default_code", "list_price", "description_sale", "is_published", "sale_ok", "categ_id"], {
+  const [t] = await searchRead<Row>("product.template", [["id", "=", tmplId]], ["name", "default_code", "list_price", "description_sale", "is_published", "sale_ok", "categ_id", "pos_categ_ids"], {
     limit: 1,
     context: { active_test: false },
   });
@@ -212,7 +212,7 @@ export function registerStockTools(server: McpServer): void {
     {
       title: "Modificar producto",
       description:
-        "Cambia precio de venta, nombre, descripción de venta, referencia interna, 'se puede vender' o 'publicado en la web' de un producto (sobre su plantilla)." + WRITE_NOTE,
+        "Cambia precio de venta, nombre, descripción de venta, referencia interna, 'se puede vender', 'publicado en la web' o las categorías del TPV de un producto (sobre su plantilla)." + WRITE_NOTE,
       inputSchema: z.object({
         product_id: z.number().int().optional().describe("Id de la variante (product.product)."),
         template_id: z.number().int().optional().describe("Id de la plantilla (product.template). Usa uno de los dos."),
@@ -224,6 +224,7 @@ export function registerStockTools(server: McpServer): void {
             default_code: z.string().optional(),
             sale_ok: z.boolean().optional(),
             is_published: z.boolean().optional().describe("Publicado en la tienda web."),
+            pos_categ_ids: z.array(z.number().int()).optional().describe("Categorías del TPV (pos.category) que sustituyen a las actuales, p. ej. [70] = CAFE."),
           })
           .refine((v) => Object.values(v).some((x) => x !== undefined), "Indica al menos un campo a cambiar."),
         confirmation_token: confirmParam,
@@ -233,9 +234,15 @@ export function registerStockTools(server: McpServer): void {
     guarded(async ({ product_id, template_id, values, confirmation_token }) => {
       const t = await templateFor({ product_id, template_id });
       const id = t.id as number;
-      const vals = Object.fromEntries(Object.entries(values).filter(([, v]) => v !== undefined));
+      const vals: Record<string, unknown> = Object.fromEntries(Object.entries(values).filter(([, v]) => v !== undefined));
       const before = Object.fromEntries(Object.keys(vals).map((k) => [k, t[k] ?? null]));
-      const fmt = (k: string, v: unknown) => (k === "list_price" ? euros(v) : typeof v === "boolean" ? (v ? "sí" : "no") : v === false || v === null ? "(vacío)" : String(v));
+      if (Array.isArray(vals.pos_categ_ids)) {
+        const ids = vals.pos_categ_ids as number[];
+        const cats = ids.length ? await call<Row[]>("pos.category", "read", { fields: ["name"] }, { ids }) : [];
+        if (cats.length !== ids.length) throw new OdooError(`Alguna categoría del TPV no existe: ${ids.join(", ")}.`);
+      }
+      const fmt = (k: string, v: unknown) =>
+        k === "list_price" ? euros(v) : typeof v === "boolean" ? (v ? "sí" : "no") : v === false || v === null || (Array.isArray(v) && !v.length) ? "(vacío)" : Array.isArray(v) ? `[${v.join(", ")}]` : String(v);
       const changes = Object.keys(vals).map((k) => `- **${k}**: ${fmt(k, before[k])} → ${fmt(k, vals[k])}`);
       return runWrite(
         {
@@ -247,7 +254,8 @@ export function registerStockTools(server: McpServer): void {
           preview: `Producto **${t.name}** (plantilla #${id}${t.default_code ? `, ref ${t.default_code}` : ""})\n${changes.join("\n")}`,
           note: changes.join("; ").replace(/\*\*/g, "").replace(/- /g, ""),
           apply: async () => {
-            await call("product.template", "write", { vals }, { ids: [id] });
+            const w = Array.isArray(vals.pos_categ_ids) ? { ...vals, pos_categ_ids: [[6, 0, vals.pos_categ_ids]] } : vals;
+            await call("product.template", "write", { vals: w }, { ids: [id] });
             return { text: `Producto "${t.name}" actualizado.` };
           },
         },
